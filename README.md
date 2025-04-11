@@ -19,10 +19,9 @@ Die Verwendung von Reconciliation Services ([https://reconciliation-api.github.i
 Dieser Prozess wird hier ([https://openrefine.org/docs/manual/reconciling](https://openrefine.org/docs/manual/reconciling)) genauer erklärt.
 
 
-
 ## Getty AAT
 
-Der Art & Architecture Thesaurus ® (AAT) (([https://www.getty.edu/research/tools/vocabularies/aat/about.html](https://www.getty.edu/research/tools/vocabularies/aat/about.html)) ) ist eine metadatenreiche Knowledge im Bereich der Kunst, Architektur und der materiellen Kultur, die häufig zur Anbindung weiterer Vokabulare durch Mappings verwendet wird. Durch eine eigene Reconciliation API kann dieser Prozess teilweise automatisiert werden. Das Getty AAT Open Refine Tutorial im Repositorium erklärt das Anlegen eines neuen Open Refine Projektes, die Einbindung des Getty Reconciliation Services, Auswahl geeigneter Vergleichsfelder und Durchführung des Mappings.
+Der Art & Architecture Thesaurus ® (AAT) ([https://www.getty.edu/research/tools/vocabularies/aat/about.html](https://www.getty.edu/research/tools/vocabularies/aat/about.html)) ist eine metadatenreiche Knowledge im Bereich der Kunst, Architektur und der materiellen Kultur, die häufig zur Anbindung weiterer Vokabulare durch Mappings verwendet wird. Durch eine eigene Reconciliation API kann dieser Prozess teilweise automatisiert werden. Das Getty AAT Open Refine Tutorial im Repositorium erklärt das Anlegen eines neuen Open Refine Projektes, die Einbindung des Getty Reconciliation Services, Auswahl geeigneter Vergleichsfelder und Durchführung des Mappings.
 
 
 
