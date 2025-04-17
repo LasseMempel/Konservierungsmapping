@@ -22,6 +22,8 @@ Dieser Prozess wird für Open Refine hier ([https://openrefine.org/docs/manual/r
 
 Der Art & Architecture Thesaurus ® (AAT) (([https://www.getty.edu/research/tools/vocabularies/aat/about.html](https://www.getty.edu/research/tools/vocabularies/aat/about.html))) ist eine metadatenreiche Knowledge im Bereich der Kunst, Architektur und der materiellen Kultur, die häufig zur Anbindung weiterer Vokabulare durch Mappings verwendet wird. Durch eine eigene Reconciliation API kann dieser Prozess teilweise automatisiert werden. Das Getty AAT Open Refine Tutorial im Repositorium erklärt das Anlegen eines neuen Open Refine Projektes, die Einbindung des Getty Reconciliation Services, Auswahl geeigneter Vergleichsfelder und Durchführung des Mappings.
 
+Link für Open Refine: https://services.getty.edu/vocab/reconcile/.
+
 ## Ein Mapping-Experiment
 
 Uns interessiert inwieweit Menschen beim Mapping von Vokabularen übereinstimmende oder sich unterscheidende Entscheidungen treffen und freuen uns sehr, wenn ihr uns dabei unterstützt. Deshalb möchten wir euch bitten:
