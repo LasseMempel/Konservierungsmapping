@@ -273,6 +273,77 @@ else:
     else:
         print("No comparison results to display.")
 
+    # === Calculate Overall Agreement Percentages ===
+    if results:
+        # Calculate overall agreement between Restaurierungsthesaurus and ALL other annotations
+        restaurierungsthesaurus_comparisons = results_df[results_df["Comparison"].str.contains("Restaurierungsthesaurus vs")]
+        
+        if not restaurierungsthesaurus_comparisons.empty:
+            # Calculate weighted average for AAT URI agreement
+            total_weighted_aat = 0
+            total_samples_aat = 0
+            
+            for idx, row in restaurierungsthesaurus_comparisons.iterrows():
+                if row["AAT URI %"] != "n/a":
+                    agreement = float(row["AAT URI %"])
+                    samples = row["Rows with Both AAT URIs"]
+                    total_weighted_aat += agreement * samples
+                    total_samples_aat += samples
+            
+            overall_restaurierungsthesaurus_aat_agreement = (total_weighted_aat / total_samples_aat) if total_samples_aat > 0 else np.nan
+            
+            # Calculate weighted average for Match agreement
+            total_weighted_match = 0
+            total_samples_match = 0
+            
+            for idx, row in restaurierungsthesaurus_comparisons.iterrows():
+                if row["Match % (URI+Prop Subset)"] != "n/a":
+                    agreement = float(row["Match % (URI+Prop Subset)"])
+                    samples = row["Rows for Match % Calc"]
+                    total_weighted_match += agreement * samples
+                    total_samples_match += samples
+            
+            overall_restaurierungsthesaurus_match_agreement = (total_weighted_match / total_samples_match) if total_samples_match > 0 else np.nan
+            
+            print(f"\n=== Overall Agreement with Restaurierungsthesaurus ===")
+            print(f"AAT URI Agreement (weighted): {round(overall_restaurierungsthesaurus_aat_agreement, 2) if not np.isnan(overall_restaurierungsthesaurus_aat_agreement) else 'n/a'}%")
+            print(f"Match Agreement (weighted): {round(overall_restaurierungsthesaurus_match_agreement, 2) if not np.isnan(overall_restaurierungsthesaurus_match_agreement) else 'n/a'}%")
+        
+        # Calculate overall inter-annotator agreement (excluding Restaurierungsthesaurus)
+        inter_annotator_comparisons = results_df[~results_df["Comparison"].str.contains("Restaurierungsthesaurus")]
+        
+        if not inter_annotator_comparisons.empty:
+            # Calculate weighted average for AAT URI agreement
+            total_weighted_aat_inter = 0
+            total_samples_aat_inter = 0
+            
+            for idx, row in inter_annotator_comparisons.iterrows():
+                if row["AAT URI %"] != "n/a":
+                    agreement = float(row["AAT URI %"])
+                    samples = row["Rows with Both AAT URIs"]
+                    total_weighted_aat_inter += agreement * samples
+                    total_samples_aat_inter += samples
+            
+            overall_inter_annotator_aat_agreement = (total_weighted_aat_inter / total_samples_aat_inter) if total_samples_aat_inter > 0 else np.nan
+            
+            # Calculate weighted average for Match agreement
+            total_weighted_match_inter = 0
+            total_samples_match_inter = 0
+            
+            for idx, row in inter_annotator_comparisons.iterrows():
+                if row["Match % (URI+Prop Subset)"] != "n/a":
+                    agreement = float(row["Match % (URI+Prop Subset)"])
+                    samples = row["Rows for Match % Calc"]
+                    total_weighted_match_inter += agreement * samples
+                    total_samples_match_inter += samples
+            
+            overall_inter_annotator_match_agreement = (total_weighted_match_inter / total_samples_match_inter) if total_samples_match_inter > 0 else np.nan
+            
+            print(f"\n=== Overall Inter-Annotator Agreement ===")
+            print(f"AAT URI Agreement (weighted): {round(overall_inter_annotator_aat_agreement, 2) if not np.isnan(overall_inter_annotator_aat_agreement) else 'n/a'}%")
+            print(f"Match Agreement (weighted): {round(overall_inter_annotator_match_agreement, 2) if not np.isnan(overall_inter_annotator_match_agreement) else 'n/a'}%")
+
+
 # === Generate Heatmap with Agreement and Sample Size (Diagonal Fixed) ===
 if results and len(results_df) > 0:
     # Extract unique dataset names
