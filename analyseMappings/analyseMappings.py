@@ -273,7 +273,7 @@ else:
     else:
         print("No comparison results to display.")
 
-# === Generate Heatmap with Custom Color Scheme ===
+# === Generate Heatmap with Agreement and Sample Size (Diagonal Fixed) ===
 if results and len(results_df) > 0:
     # Extract unique dataset names
     all_datasets = set()
@@ -294,11 +294,12 @@ if results and len(results_df) > 0:
             dataset_labels[ds] = f"annotator{annotator_count}"
             annotator_count += 1
     
-    # Create a matrix for the heatmap
+    # Create matrices for the heatmap: one for values, one for sample sizes
     n_datasets = len(all_datasets)
     matrix = np.zeros((n_datasets, n_datasets))
+    sample_sizes = np.zeros((n_datasets, n_datasets), dtype=int)  # For "Rows with Both AAT URIs", using int dtype
     
-    # Fill the matrix with agreement values (using AAT URI % for this example)
+    # Fill the matrices with agreement values and sample sizes
     for idx, row in results_df.iterrows():
         comparison = row["Comparison"]
         datasets = comparison.split(" vs ")
@@ -316,51 +317,96 @@ if results and len(results_df) > 0:
                 if agreement == "n/a":
                     agreement = np.nan
                 
-                # Fill both sides of the matrix (symmetric)
+                # Get the sample size (number of rows compared)
+                sample_size = row["Rows with Both AAT URIs"]
+                
+                # Fill both sides of the matrices (symmetric)
                 matrix[i][j] = agreement if not pd.isna(agreement) else np.nan
                 matrix[j][i] = agreement if not pd.isna(agreement) else np.nan
+                
+                sample_sizes[i][j] = sample_size
+                sample_sizes[j][i] = sample_size # This ensures symmetry
                 
             except ValueError:
                 continue  # Skip if dataset not found in all_datasets
     
     # Fill diagonal with 100 (perfect agreement with itself)
-    for i in range(n_datasets):
-        matrix[i][i] = 100.0
-    
+    # For sample size on diagonal, we can use the total number of notations that have AAT URI in that dataset
+    # This requires loading the original datasets to count non-NaN AAT URIs
+    for i, ds_name in enumerate(all_datasets):
+        if ds_name == "Restaurierungsthesaurus":
+            original_df = restaurierungsthesaurus
+        else:
+            # Find the correct file path from the original included list
+            original_file = [f for f in included if f.split('/')[-1] == ds_name or f.split('\\')[-1] == ds_name]
+            if original_file:
+                original_df = pd.read_csv(original_file[0], encoding='cp1252')
+                # Ensure required columns exist and are normalized
+                for col in ["AAT URI", "exactMatch", "closeMatch", "relatedMatch"]:
+                    if col in original_df.columns:
+                        original_df[col] = original_df[col].apply(normalize_uri)
+            else:
+                print(f"Warning: Could not find original file for {ds_name}. Using 0 for diagonal sample size.")
+                sample_sizes[i][i] = 0
+                matrix[i][i] = 100.0
+                continue
+        
+        # Count rows in this dataset that have a non-NaN AAT URI
+        # This matches the logic of "Rows with Both AAT URIs" but for a single dataset
+        aat_count = original_df["AAT URI"].notna().sum()
+        sample_sizes[i][i] = aat_count
+        matrix[i][i] = 100.0 # Perfect agreement with itself
+
     # Create labels for the heatmap
     labels = [dataset_labels.get(ds, ds) for ds in all_datasets]
     
     # Define custom color palette matching your webpage
-    # From light beige → white → dark navy blue
     colors = ["#F5F3EE", "#FFFFFF", "#1A2B4C"]  # Light beige, White, Dark Navy
     cmap = sns.blend_palette(colors, as_cmap=True)
     
+    # Create a combined text matrix for annotations
+    # Format each cell as "Agreement%\n(N)"
+    text_matrix = np.empty_like(matrix, dtype=object)
+    for i in range(n_datasets):
+        for j in range(n_datasets):
+            if not np.isnan(matrix[i, j]) and sample_sizes[i, j] >= 0: # Use >= 0 since diagonal can be 0
+                text_matrix[i, j] = f"{matrix[i, j]:.1f}\n(N={sample_sizes[i, j]})"
+            elif not np.isnan(matrix[i, j]): # If sample size is NaN but agreement is not
+                text_matrix[i, j] = f"{matrix[i, j]:.1f}\n(N=?)"
+            elif sample_sizes[i, j] >= 0: # If agreement is NaN but sample size is not (shouldn't happen for diagonal with current logic)
+                text_matrix[i, j] = f"n/a\n(N={sample_sizes[i, j]})"
+            else: # Both are NaN (shouldn't happen now)
+                text_matrix[i, j] = "n/a\n(N=?)"
+    
     # Create the heatmap
-    plt.figure(figsize=(10, 8))
-    mask = np.isnan(matrix)
+    plt.figure(figsize=(12, 10)) # Slightly larger to accommodate text
+    mask = np.isnan(matrix) # Mask based on agreement values (only masks cells where agreement is NaN, not diagonal)
     sns.heatmap(
         matrix, 
         mask=mask,
         xticklabels=labels, 
         yticklabels=labels,
-        annot=True, 
-        fmt='.1f',
+        annot=text_matrix,  # Use the custom text matrix
+        fmt='',  # Don't format the text, use the strings from text_matrix
         cmap=cmap, 
         center=50,  # Center at 50% for balanced visual
         cbar_kws={'label': 'AAT URI Agreement (%)'},
         square=True,
         linewidths=0.5,
-        linecolor='lightgray'
+        linecolor='lightgray',
+        annot_kws={"fontsize": 9, "va": "center"} # Adjust font size and vertical alignment
     )
-    plt.title("Getty AAT URI Mapping Agreement Heatmap: Fachthesaurus vs Annotators", fontsize=16, pad=20, fontweight='bold', color='#1A2B4C')
+    plt.title("Agreement Heatmap: Fachthesaurus vs Annotators", fontsize=16, pad=20, fontweight='bold', color='#1A2B4C')
     plt.xticks(rotation=45, ha='right', color='#1A2B4C')
     plt.yticks(rotation=0, color='#1A2B4C')
     plt.tight_layout()
-    plt.savefig('heatmap_AAT_URI_agreement.png')
+    plt.savefig('heatmap_AAT_URI_agreement_with_N.png', dpi=300, bbox_inches='tight', facecolor='white')
     plt.show()
+    
     """
     # Optionally, create a second heatmap for Match % (URI+Prop Subset)
     matrix_match = np.zeros((n_datasets, n_datasets))
+    sample_sizes_match = np.zeros((n_datasets, n_datasets), dtype=int) # For "Rows for Match % Calc", using int dtype
     
     for idx, row in results_df.iterrows():
         comparison = row["Comparison"]
@@ -379,33 +425,66 @@ if results and len(results_df) > 0:
                 if agreement == "n/a":
                     agreement = np.nan
                 
-                # Fill both sides of the matrix (symmetric)
+                # Get the sample size for match calculation
+                sample_size = row["Rows for Match % Calc"]
+                
+                # Fill both sides of the matrices (symmetric)
                 matrix_match[i][j] = agreement if not pd.isna(agreement) else np.nan
                 matrix_match[j][i] = agreement if not pd.isna(agreement) else np.nan
+                
+                sample_sizes_match[i][j] = sample_size
+                sample_sizes_match[j][i] = sample_size # This ensures symmetry
                 
             except ValueError:
                 continue  # Skip if dataset not found in all_datasets
     
-    # Fill diagonal with 100 (perfect agreement with itself)
+    # Fill diagonal for match agreement heatmap
+    # For the "Match % (URI+Prop Subset)" diagonal, the sample size would be the same as the AAT URI diagonal
+    # because the calculation starts with matching AAT URIs. So, we can reuse the sample_sizes[i][i] value.
+    # However, the match property agreement calculation requires the URI to be in match properties in BOTH datasets.
+    # When comparing a dataset to itself, every matching URI is by definition in the same property in both (itself).
+    # So the sample size for the match agreement diagonal should be the same as the AAT URI diagonal count.
     for i in range(n_datasets):
-        matrix_match[i][i] = 100.0
+        matrix_match[i][i] = 100.0 # Perfect match agreement with itself
+        # The sample size for match agreement diagonal is the same as for AAT URI diagonal
+        # because every row with a matching AAT URI in self-comparison will meet the criteria for match property calc
+        sample_sizes_match[i][i] = sample_sizes[i][i] 
+
+    # Create a combined text matrix for match heatmap annotations
+    text_matrix_match = np.empty_like(matrix_match, dtype=object)
+    for i in range(n_datasets):
+        for j in range(n_datasets):
+            if not np.isnan(matrix_match[i, j]) and sample_sizes_match[i, j] >= 0:
+                text_matrix_match[i, j] = f"{matrix_match[i, j]:.1f}\n(N={sample_sizes_match[i, j]})"
+            elif not np.isnan(matrix_match[i, j]): # If sample size is NaN but agreement is not
+                text_matrix_match[i, j] = f"{matrix_match[i, j]:.1f}\n(N=?)"
+            elif sample_sizes_match[i, j] >= 0: # If agreement is NaN but sample size is not
+                text_matrix_match[i, j] = f"n/a\n(N={sample_sizes_match[i, j]})"
+            else: # Both are NaN
+                text_matrix_match[i, j] = "n/a\n(N=?)"
     
     # Create the second heatmap
-    plt.figure(figsize=(10, 8))
-    mask_match = np.isnan(matrix_match)
+    plt.figure(figsize=(12, 10))
+    mask_match = np.isnan(matrix_match) # Mask based on agreement values
     sns.heatmap(
         matrix_match, 
         mask=mask_match,
         xticklabels=labels, 
         yticklabels=labels,
-        annot=True, 
-        fmt='.1f',
-        cmap="RdYlGn", 
+        annot=text_matrix_match,  # Use the custom text matrix
+        fmt='',  # Don't format the text, use the strings from text_matrix_match
+        cmap=cmap, 
         center=50,
         cbar_kws={'label': 'Match Agreement (URI+Prop Subset) (%)'},
-        square=True
+        square=True,
+        linewidths=0.5,
+        linecolor='lightgray',
+        annot_kws={"fontsize": 9, "va": "center"} # Adjust font size and vertical alignment
     )
-    plt.title("Match Agreement Heatmap: Fachthesaurus vs Annotators", fontsize=16, pad=20)
+    plt.title("Match Agreement Heatmap: Fachthesaurus vs Annotators", fontsize=16, pad=20, fontweight='bold', color='#1A2B4C')
+    plt.xticks(rotation=45, ha='right', color='#1A2B4C')
+    plt.yticks(rotation=0, color='#1A2B4C')
     plt.tight_layout()
+    plt.savefig('heatmap_match_agreement_with_N.png', dpi=300, bbox_inches='tight', facecolor='white')
     plt.show()
     """
